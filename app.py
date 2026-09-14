@@ -1,219 +1,421 @@
-from flask import Flask, request, render_template_string
+from flask import Flask, request, redirect, url_for, session, render_template_string
+import sqlite3
+from werkzeug.security import generate_password_hash, check_password_hash
+import os
 
 app = Flask(__name__)
 
-HTML = """
-<!DOCTYPE html>
-<html lang="ar" dir="rtl">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+# مفتاح جلسات آمن
+app.secret_key = os.environ.get("SECRET_KEY", "change-this-secret-key")
 
-    <title>موقعي - تسجيل الدخول</title>
+DATABASE = "users.db"
 
-    <style>
-        * {
-            box-sizing: border-box;
-        }
 
-        body {
-            margin: 0;
-            font-family: Arial, sans-serif;
-            background: #f0f2f5;
-            color: #333;
-        }
+# =========================
+# قاعدة البيانات
+# =========================
 
-        .logo {
-            text-align: center;
-            padding-top: 90px;
-            padding-bottom: 25px;
-        }
+def get_db():
+    conn = sqlite3.connect(DATABASE)
+    conn.row_factory = sqlite3.Row
+    return conn
 
-        .logo-circle {
-            width: 85px;
-            height: 85px;
-            margin: auto;
-            border-radius: 50%;
-            background: #1877f2;
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 55px;
-            font-weight: bold;
-        }
 
-        .site-name {
-            margin-top: 15px;
-            font-size: 30px;
-            font-weight: bold;
-            color: #1877f2;
-        }
+def init_db():
+    conn = get_db()
 
-        .login-box {
-            background: white;
-            max-width: 500px;
-            margin: 0 auto;
-            padding: 30px 35px 35px;
-            border-radius: 15px;
-            box-shadow: 0 2px 12px rgba(0,0,0,0.15);
-        }
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL UNIQUE,
+            email TEXT NOT NULL UNIQUE,
+            password_hash TEXT NOT NULL
+        )
+    """)
 
-        .languages {
-            text-align: center;
-            margin-bottom: 25px;
-            color: #666;
-            font-size: 17px;
-        }
+    conn.commit()
+    conn.close()
 
-        .languages span {
-            margin: 0 7px;
-        }
 
-        input {
-            width: 100%;
-            padding: 18px;
-            margin-bottom: 15px;
-            border: 1px solid #ddd;
-            border-radius: 10px;
-            font-size: 17px;
-            text-align: right;
-            outline: none;
-        }
+init_db()
 
-        input:focus {
-            border-color: #1877f2;
-            box-shadow: 0 0 0 2px rgba(24,119,242,0.15);
-        }
 
-        .login-button {
-            width: 100%;
-            padding: 17px;
-            border: none;
-            border-radius: 10px;
-            background: #1877f2;
-            color: white;
-            font-size: 21px;
-            font-weight: bold;
-            cursor: pointer;
-        }
+# =========================
+# التصميم
+# =========================
 
-        .login-button:hover {
-            background: #166fe5;
-        }
+STYLE = """
+<style>
+* {
+    box-sizing: border-box;
+}
 
-        .forgot {
-            display: block;
-            text-align: center;
-            margin-top: 22px;
-            color: #1877f2;
-            text-decoration: none;
-            font-size: 17px;
-        }
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #f0f2f5;
+    direction: rtl;
+}
 
-        .message {
-            text-align: center;
-            margin-bottom: 15px;
-            color: #1877f2;
-            font-weight: bold;
-        }
+.container {
+    width: 100%;
+    max-width: 430px;
+    margin: 70px auto;
+    padding: 20px;
+}
 
-        .footer {
-            text-align: center;
-            margin-top: 30px;
-            color: #777;
-            font-size: 14px;
-        }
+.logo {
+    text-align: center;
+    margin-bottom: 25px;
+}
 
-        @media (max-width: 550px) {
-            .logo {
-                padding-top: 55px;
-            }
+.logo-circle {
+    width: 80px;
+    height: 80px;
+    margin: auto;
+    border-radius: 50%;
+    background: #1877f2;
+    color: white;
+    font-size: 45px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
 
-            .login-box {
-                margin: 0 12px;
-                padding: 25px 20px 30px;
-            }
-        }
-    </style>
-</head>
+.logo h1 {
+    color: #1877f2;
+}
 
-<body>
+.box {
+    background: white;
+    padding: 25px;
+    border-radius: 15px;
+    box-shadow: 0 3px 15px rgba(0,0,0,.15);
+}
 
-    <div class="logo">
-        <div class="logo-circle">م</div>
-        <div class="site-name">موقعي</div>
-    </div>
+input {
+    width: 100%;
+    padding: 15px;
+    margin-bottom: 13px;
+    border: 1px solid #ddd;
+    border-radius: 9px;
+    font-size: 16px;
+}
 
-    <div class="login-box">
+button {
+    width: 100%;
+    padding: 15px;
+    border: 0;
+    border-radius: 9px;
+    background: #1877f2;
+    color: white;
+    font-size: 18px;
+    font-weight: bold;
+    cursor: pointer;
+}
 
-        <div class="languages">
-            <span>Français</span>
-            |
-            <span>English</span>
-            |
-            <span>العربية</span>
-        </div>
+button:hover {
+    background: #166fe5;
+}
 
-        {% if message %}
-            <div class="message">{{ message }}</div>
-        {% endif %}
+a {
+    color: #1877f2;
+    text-decoration: none;
+}
 
-        <form method="POST">
+.center {
+    text-align: center;
+    margin-top: 20px;
+}
 
-            <input
-                type="text"
-                name="username"
-                placeholder="البريد الإلكتروني أو رقم الهاتف"
-                required
-            >
+.error {
+    background: #ffe5e5;
+    color: #b00000;
+    padding: 10px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+}
 
-            <input
-                type="password"
-                name="password"
-                placeholder="كلمة السر"
-                required
-            >
-
-            <button class="login-button" type="submit">
-                تسجيل الدخول
-            </button>
-
-        </form>
-
-        <a href="#" class="forgot">
-            هل نسيت كلمة السر؟
-        </a>
-
-    </div>
-
-    <div class="footer">
-        © 2026 موقعي - جميع الحقوق محفوظة
-    </div>
-
-</body>
-</html>
+.success {
+    background: #e5ffe9;
+    color: #08752b;
+    padding: 10px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+}
+</style>
 """
 
 
-@app.route("/", methods=["GET", "POST"])
+# =========================
+# الصفحة الرئيسية
+# =========================
+
+@app.route("/")
 def home():
 
-    message = ""
+    if "user_id" in session:
+        return redirect(url_for("profile"))
+
+    return render_template_string(
+        STYLE + """
+        <div class="container">
+
+            <div class="logo">
+                <div class="logo-circle">م</div>
+                <h1>موقعي</h1>
+                <p>مرحباً بك في موقعنا</p>
+            </div>
+
+            <div class="box">
+
+                <h2>تسجيل الدخول</h2>
+
+                <form method="POST" action="/login">
+
+                    <input
+                        type="email"
+                        name="email"
+                        placeholder="البريد الإلكتروني"
+                        required
+                    >
+
+                    <input
+                        type="password"
+                        name="password"
+                        placeholder="كلمة السر"
+                        required
+                    >
+
+                    <button type="submit">
+                        تسجيل الدخول
+                    </button>
+
+                </form>
+
+                <div class="center">
+                    ليس لديك حساب؟
+                    <a href="/register">إنشاء حساب</a>
+                </div>
+
+            </div>
+
+        </div>
+        """
+    )
+
+
+# =========================
+# التسجيل
+# =========================
+
+@app.route("/register", methods=["GET", "POST"])
+def register():
+
+    error = ""
 
     if request.method == "POST":
-        username = request.form.get("username", "")
 
-        # عرض رسالة تجريبية فقط.
-        # لا يتم حفظ كلمة المرور أو إرسالها لأي جهة.
-        if username:
-            message = "تم إرسال طلب تسجيل الدخول بشكل تجريبي."
+        username = request.form.get("username", "").strip()
+        email = request.form.get("email", "").strip().lower()
+        password = request.form.get("password", "")
 
-    return render_template_string(HTML, message=message)
+        if len(username) < 3:
+            error = "اسم المستخدم يجب أن يكون 3 أحرف على الأقل."
 
+        elif len(password) < 8:
+            error = "كلمة السر يجب أن تكون 8 أحرف على الأقل."
+
+        else:
+
+            password_hash = generate_password_hash(password)
+
+            try:
+
+                conn = get_db()
+
+                conn.execute(
+                    """
+                    INSERT INTO users
+                    (username, email, password_hash)
+                    VALUES (?, ?, ?)
+                    """,
+                    (username, email, password_hash)
+                )
+
+                conn.commit()
+                conn.close()
+
+                return redirect(url_for("home"))
+
+            except sqlite3.IntegrityError:
+
+                error = "اسم المستخدم أو البريد الإلكتروني مستخدم بالفعل."
+
+    return render_template_string(
+        STYLE + """
+        <div class="container">
+
+            <div class="logo">
+                <div class="logo-circle">م</div>
+                <h1>موقعي</h1>
+            </div>
+
+            <div class="box">
+
+                <h2>إنشاء حساب</h2>
+
+                {% if error %}
+                    <div class="error">{{ error }}</div>
+                {% endif %}
+
+                <form method="POST">
+
+                    <input
+                        type="text"
+                        name="username"
+                        placeholder="اسم المستخدم"
+                        required
+                    >
+
+                    <input
+                        type="email"
+                        name="email"
+                        placeholder="البريد الإلكتروني"
+                        required
+                    >
+
+                    <input
+                        type="password"
+                        name="password"
+                        placeholder="كلمة السر"
+                        required
+                    >
+
+                    <button type="submit">
+                        إنشاء الحساب
+                    </button>
+
+                </form>
+
+                <div class="center">
+                    لديك حساب؟
+                    <a href="/">تسجيل الدخول</a>
+                </div>
+
+            </div>
+
+        </div>
+        """,
+        error=error
+    )
+
+
+# =========================
+# تسجيل الدخول
+# =========================
+
+@app.route("/login", methods=["POST"])
+def login():
+
+    email = request.form.get("email", "").strip().lower()
+    password = request.form.get("password", "")
+
+    conn = get_db()
+
+    user = conn.execute(
+        "SELECT * FROM users WHERE email = ?",
+        (email,)
+    ).fetchone()
+
+    conn.close()
+
+    if user and check_password_hash(
+        user["password_hash"],
+        password
+    ):
+
+        session["user_id"] = user["id"]
+        session["username"] = user["username"]
+
+        return redirect(url_for("profile"))
+
+    return render_template_string(
+        STYLE + """
+        <div class="container">
+
+            <div class="box">
+
+                <div class="error">
+                    البريد الإلكتروني أو كلمة السر غير صحيحة.
+                </div>
+
+                <div class="center">
+                    <a href="/">العودة</a>
+                </div>
+
+            </div>
+
+        </div>
+        """
+    )
+
+
+# =========================
+# الملف الشخصي
+# =========================
+
+@app.route("/profile")
+def profile():
+
+    if "user_id" not in session:
+        return redirect(url_for("home"))
+
+    return render_template_string(
+        STYLE + """
+        <div class="container">
+
+            <div class="box">
+
+                <h2>مرحباً {{ username }} 👋</h2>
+
+                <p>
+                    تم تسجيل دخولك بنجاح.
+                </p>
+
+                <div class="center">
+                    <a href="/logout">تسجيل الخروج</a>
+                </div>
+
+            </div>
+
+        </div>
+        """,
+        username=session["username"]
+    )
+
+
+# =========================
+# تسجيل الخروج
+# =========================
+
+@app.route("/logout")
+def logout():
+
+    session.clear()
+
+    return redirect(url_for("home"))
+
+
+# =========================
+# تشغيل Flask
+# =========================
 
 if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 10000))
+
     app.run(
         host="0.0.0.0",
-        port=10000
-    )
+        port=port
+)
