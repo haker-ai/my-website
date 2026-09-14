@@ -1,28 +1,28 @@
 from flask import Flask, request, redirect, url_for, session, render_template_string
 import sqlite3
-from werkzeug.security import generate_password_hash, check_password_hash
 import os
+from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
+
+# مفتاح الجلسات
 app.secret_key = os.environ.get("SECRET_KEY", "change-this-secret-key")
 
 DATABASE = "users.db"
 
 
-def get_db():
-    conn = sqlite3.connect(DATABASE)
-    conn.row_factory = sqlite3.Row
-    return conn
-
-
+# =========================
+# قاعدة البيانات
+# =========================
 def init_db():
-    conn = get_db()
+    conn = sqlite3.connect(DATABASE)
+    cursor = conn.cursor()
 
-    conn.execute("""
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT NOT NULL UNIQUE,
-            email TEXT NOT NULL UNIQUE,
+            username TEXT NOT NULL,
+            email TEXT UNIQUE NOT NULL,
             password_hash TEXT NOT NULL
         )
     """)
@@ -34,6 +34,9 @@ def init_db():
 init_db()
 
 
+# =========================
+# التصميم العام
+# =========================
 STYLE = """
 <style>
 * {
@@ -42,52 +45,46 @@ STYLE = """
 
 body {
     margin: 0;
-    background: #f0f2f5;
     font-family: Arial, sans-serif;
+    background: #f0f2f5;
+    direction: rtl;
 }
 
-.container {
-    width: 100%;
-    max-width: 400px;
-    margin: 70px auto;
-    padding: 20px;
+.navbar {
+    background: #1877f2;
+    color: white;
+    padding: 15px 25px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
 .logo {
-    text-align: center;
-    margin-bottom: 25px;
-}
-
-.f-logo {
-    width: 90px;
-    height: 90px;
-    margin: auto;
-    border-radius: 50%;
-    background: #1877f2;
-    color: white;
-    font-size: 75px;
+    font-size: 28px;
     font-weight: bold;
-    line-height: 105px;
 }
 
-.title {
-    color: #1877f2;
-    font-size: 30px;
-    font-weight: bold;
-    margin-top: 12px;
+.container {
+    max-width: 430px;
+    margin: 50px auto;
+    padding: 20px;
 }
 
-.box {
+.card {
     background: white;
     padding: 25px;
     border-radius: 12px;
-    box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+    box-shadow: 0 3px 12px rgba(0,0,0,0.12);
+}
+
+h1, h2 {
+    text-align: center;
 }
 
 input {
     width: 100%;
-    padding: 16px;
-    margin-bottom: 12px;
+    padding: 14px;
+    margin: 8px 0;
     border: 1px solid #ddd;
     border-radius: 8px;
     font-size: 16px;
@@ -95,13 +92,13 @@ input {
 
 button {
     width: 100%;
-    padding: 15px;
+    padding: 14px;
+    margin-top: 10px;
     border: none;
     border-radius: 8px;
     background: #1877f2;
     color: white;
-    font-size: 18px;
-    font-weight: bold;
+    font-size: 17px;
     cursor: pointer;
 }
 
@@ -114,272 +111,264 @@ a {
     text-decoration: none;
 }
 
-.center {
+.message {
     text-align: center;
-    margin-top: 20px;
+    color: red;
+    margin: 10px;
 }
 
-.error {
-    background: #ffe5e5;
-    color: #b00000;
-    padding: 10px;
-    border-radius: 7px;
-    margin-bottom: 15px;
+.profile {
+    text-align: center;
 }
 
-.success {
-    background: #e5ffe9;
-    color: #08752b;
-    padding: 10px;
-    border-radius: 7px;
-    margin-bottom: 15px;
+.avatar {
+    width: 90px;
+    height: 90px;
+    background: #1877f2;
+    color: white;
+    border-radius: 50%;
+    margin: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 40px;
+    font-weight: bold;
 }
 </style>
 """
 
 
+# =========================
+# الصفحة الرئيسية
+# =========================
 @app.route("/")
 def home():
 
     if "user_id" in session:
         return redirect(url_for("profile"))
 
-    return render_template_string(
-        STYLE + """
-        <div class="container">
-
-            <div class="logo">
-                <div class="f-logo">f</div>
-                <div class="title">موقعي</div>
-            </div>
-
-            <div class="box">
-
-                <h2>تسجيل الدخول</h2>
-
-                <form method="POST" action="/login">
-
-                    <input
-                        type="email"
-                        name="email"
-                        placeholder="البريد الإلكتروني"
-                        required
-                    >
-
-                    <input
-                        type="password"
-                        name="password"
-                        placeholder="كلمة السر"
-                        required
-                    >
-
-                    <button type="submit">
-                        تسجيل الدخول
-                    </button>
-
-                </form>
-
-                <div class="center">
-                    <a href="/register">إنشاء حساب جديد</a>
-                </div>
-
-            </div>
-
+    return render_template_string(STYLE + """
+    <div class="navbar">
+        <div class="logo">SBook</div>
+        <div>
+            <a href="/login" style="color:white;">تسجيل الدخول</a>
         </div>
-        """
-    )
+    </div>
+
+    <div class="container">
+        <div class="card">
+            <h1>مرحباً بك في SBook 👋</h1>
+
+            <p style="text-align:center;">
+                شبكة اجتماعية خاصة بك
+            </p>
+
+            <a href="/register">
+                <button>إنشاء حساب جديد</button>
+            </a>
+
+            <a href="/login">
+                <button style="background:#42b72a;">
+                    تسجيل الدخول
+                </button>
+            </a>
+        </div>
+    </div>
+    """)
 
 
+# =========================
+# التسجيل
+# =========================
 @app.route("/register", methods=["GET", "POST"])
 def register():
 
-    error = ""
+    message = ""
 
     if request.method == "POST":
 
         username = request.form.get("username", "").strip()
-        email = request.form.get("email", "").strip().lower()
+        email = request.form.get("email", "").strip()
         password = request.form.get("password", "")
 
-        if len(username) < 3:
-            error = "اسم المستخدم يجب أن يكون 3 أحرف على الأقل."
+        if not username or not email or not password:
+            message = "يرجى ملء جميع الحقول."
 
-        elif len(password) < 8:
-            error = "كلمة السر يجب أن تكون 8 أحرف على الأقل."
+        elif len(password) < 6:
+            message = "كلمة المرور يجب أن تكون 6 أحرف على الأقل."
 
         else:
-
             password_hash = generate_password_hash(password)
 
             try:
+                conn = sqlite3.connect(DATABASE)
+                cursor = conn.cursor()
 
-                conn = get_db()
-
-                conn.execute(
-                    """
+                cursor.execute("""
                     INSERT INTO users
                     (username, email, password_hash)
                     VALUES (?, ?, ?)
-                    """,
-                    (username, email, password_hash)
-                )
+                """, (username, email, password_hash))
 
                 conn.commit()
                 conn.close()
 
-                return redirect(url_for("home"))
+                return redirect(url_for("login"))
 
             except sqlite3.IntegrityError:
+                message = "هذا البريد الإلكتروني مسجل بالفعل."
 
-                error = "البريد الإلكتروني أو اسم المستخدم مستخدم بالفعل."
+    return render_template_string(STYLE + """
+    <div class="navbar">
+        <div class="logo">SBook</div>
+    </div>
 
-    return render_template_string(
-        STYLE + """
-        <div class="container">
+    <div class="container">
+        <div class="card">
 
-            <div class="logo">
-                <div class="f-logo">f</div>
-                <div class="title">موقعي</div>
-            </div>
+            <h2>إنشاء حساب جديد</h2>
 
-            <div class="box">
+            {% if message %}
+                <div class="message">{{ message }}</div>
+            {% endif %}
 
-                <h2>إنشاء حساب جديد</h2>
+            <form method="POST">
 
-                {% if error %}
-                    <div class="error">{{ error }}</div>
-                {% endif %}
+                <input
+                    type="text"
+                    name="username"
+                    placeholder="اسم المستخدم"
+                    required
+                >
 
-                <form method="POST">
+                <input
+                    type="email"
+                    name="email"
+                    placeholder="البريد الإلكتروني"
+                    required
+                >
 
-                    <input
-                        type="text"
-                        name="username"
-                        placeholder="اسم المستخدم"
-                        required
-                    >
+                <input
+                    type="password"
+                    name="password"
+                    placeholder="كلمة المرور"
+                    required
+                >
 
-                    <input
-                        type="email"
-                        name="email"
-                        placeholder="البريد الإلكتروني"
-                        required
-                    >
+                <button type="submit">
+                    إنشاء الحساب
+                </button>
 
-                    <input
-                        type="password"
-                        name="password"
-                        placeholder="كلمة السر"
-                        required
-                    >
+            </form>
 
-                    <button type="submit">
-                        إنشاء الحساب
-                    </button>
-
-                </form>
-
-                <div class="center">
-                    <a href="/">العودة لتسجيل الدخول</a>
-                </div>
-
-            </div>
+            <p style="text-align:center;">
+                لديك حساب؟
+                <a href="/login">تسجيل الدخول</a>
+            </p>
 
         </div>
-        """,
-        error=error
-    )
+    </div>
+    """, message=message)
 
 
-@app.route("/login", methods=["POST"])
+# =========================
+# تسجيل الدخول
+# =========================
+@app.route("/login", methods=["GET", "POST"])
 def login():
 
-    email = request.form.get("email", "").strip().lower()
-    password = request.form.get("password", "")
+    message = ""
 
-    conn = get_db()
+    if request.method == "POST":
 
-    user = conn.execute(
-        "SELECT * FROM users WHERE email = ?",
-        (email,)
-    ).fetchone()
+        email = request.form.get("email", "").strip()
+        password = request.form.get("password", "")
 
-    conn.close()
+        conn = sqlite3.connect(DATABASE)
+        cursor = conn.cursor()
 
-    if user and check_password_hash(
-        user["password_hash"],
-        password
-    ):
+        cursor.execute(
+            "SELECT id, username, password_hash FROM users WHERE email = ?",
+            (email,)
+        )
 
-        session["user_id"] = user["id"]
-        session["username"] = user["username"]
+        user = cursor.fetchone()
 
-        return redirect(url_for("profile"))
+        conn.close()
 
-    return render_template_string(
-        STYLE + """
-        <div class="container">
-            <div class="box">
+        if user and check_password_hash(user[2], password):
 
-                <div class="error">
-                    البريد الإلكتروني أو كلمة السر غير صحيحة.
-                </div>
+            session["user_id"] = user[0]
+            session["username"] = user[1]
 
-                <div class="center">
-                    <a href="/">العودة</a>
-                </div>
+            return redirect(url_for("profile"))
 
-            </div>
+        else:
+            message = "البريد الإلكتروني أو كلمة المرور غير صحيحة."
+
+    return render_template_string(STYLE + """
+    <div class="navbar">
+        <div class="logo">SBook</div>
+    </div>
+
+    <div class="container">
+        <div class="card">
+
+            <h2>تسجيل الدخول</h2>
+
+            {% if message %}
+                <div class="message">{{ message }}</div>
+            {% endif %}
+
+            <form method="POST">
+
+                <input
+                    type="email"
+                    name="email"
+                    placeholder="البريد الإلكتروني"
+                    required
+                >
+
+                <input
+                    type="password"
+                    name="password"
+                    placeholder="كلمة المرور"
+                    required
+                >
+
+                <button type="submit">
+                    تسجيل الدخول
+                </button>
+
+            </form>
+
+            <p style="text-align:center;">
+                ليس لديك حساب؟
+                <a href="/register">إنشاء حساب</a>
+            </p>
+
         </div>
-        """
-    )
+    </div>
+    """, message=message)
 
 
+# =========================
+# الملف الشخصي
+# =========================
 @app.route("/profile")
 def profile():
 
     if "user_id" not in session:
-        return redirect(url_for("home"))
+        return redirect(url_for("login"))
 
-    return render_template_string(
-        STYLE + """
-        <div class="container">
+    username = session.get("username", "مستخدم")
 
-            <div class="logo">
-                <div class="f-logo">f</div>
-            </div>
+    return render_template_string(STYLE + """
+    <div class="navbar">
+        <div class="logo">SBook</div>
+        <a href="/logout" style="color:white;">
+            تسجيل الخروج
+        </a>
+    </div>
 
-            <div class="box">
-
-                <h2>مرحباً {{ username }} 👋</h2>
-
-                <p>تم تسجيل دخولك بنجاح.</p>
-
-                <div class="center">
-                    <a href="/logout">تسجيل الخروج</a>
-                </div>
-
-            </div>
-
-        </div>
-        """,
-        username=session["username"]
-    )
-
-
-@app.route("/logout")
-def logout():
-
-    session.clear()
-
-    return redirect(url_for("home"))
-
-
-if __name__ == "__main__":
-
-    port = int(os.environ.get("PORT", 10000))
-
-    app.run(
-        host="0.0.0.0",
-        port=port
-                )
+    <div class="container">
