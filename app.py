@@ -1,392 +1,254 @@
-from flask import Flask, request, session
+from flask import Flask, redirect, request, session, url_for
 import os
+import secrets
+import requests
 
 app = Flask(__name__)
-app.secret_key = os.environ.get("SECRET_KEY", "my-secret-key")
 
+app.secret_key = os.environ.get("SECRET_KEY", secrets.token_hex(32))
 
-HTML = """
-<!DOCTYPE html>
-<html lang="ar" dir="rtl">
+FACEBOOK_APP_ID = os.environ.get("FACEBOOK_APP_ID")
+FACEBOOK_APP_SECRET = os.environ.get("FACEBOOK_APP_SECRET")
 
-<head>
-<meta charset="UTF-8">
-<meta name="viewport"
-      content="width=device-width, initial-scale=1.0">
+# غيّر هذا إذا استخدمت إصدار Graph API آخر في تطبيق Meta
+FACEBOOK_API_VERSION = os.environ.get("FACEBOOK_API_VERSION", "v23.0")
 
-<title>تسجيل الدخول</title>
-
-<style>
-
-* {
-    box-sizing: border-box;
-}
-
-body {
-    margin: 0;
-    background: #f0f2f5;
-    font-family: Arial, sans-serif;
-    color: #1c1e21;
-}
-
-/* المساحة العلوية */
-.top {
-    min-height: 430px;
-    display: flex;
-    justify-content: center;
-    align-items: flex-end;
-    padding-bottom: 25px;
-}
-
-/* شعار موقعك */
-.logo {
-    width: 86px;
-    height: 86px;
-    border-radius: 50%;
-    background: #287be8;
-    color: white;
-
-    display: flex;
-    justify-content: center;
-    align-items: center;
-
-    font-size: 70px;
-    font-weight: bold;
-    font-family: Arial, sans-serif;
-
-    box-shadow: 0 2px 8px #0002;
-}
-
-/* صندوق تسجيل الدخول */
-.login-box {
-    width: 100%;
-    max-width: 690px;
-    margin: 0 auto;
-    background: white;
-
-    padding: 42px 35px 30px;
-
-    border-radius: 16px 16px 0 0;
-    box-shadow: 0 -2px 10px #0001;
-}
-
-/* اللغات */
-.languages {
-    text-align: center;
-    font-size: 17px;
-    color: #4267a5;
-    margin-bottom: 35px;
-}
-
-.languages span {
-    margin: 0 7px;
-}
-
-/* الحقول */
-input {
-    width: 100%;
-    height: 62px;
-
-    border: 1px solid #d0d4d9;
-    border-radius: 8px;
-
-    padding: 0 20px;
-
-    font-size: 18px;
-    color: #333;
-
-    margin-bottom: 14px;
-
-    outline: none;
-}
-
-input:focus {
-    border: 2px solid #287be8;
-}
-
-/* زر الدخول */
-.login-button {
-    width: 100%;
-    height: 64px;
-
-    border: none;
-    border-radius: 8px;
-
-    background: #287be8;
-    color: white;
-
-    font-size: 22px;
-    font-weight: bold;
-
-    cursor: pointer;
-}
-
-.login-button:active {
-    transform: scale(0.99);
-}
-
-/* نسيت كلمة المرور */
-.forgot {
-    display: block;
-
-    text-align: center;
-
-    margin-top: 25px;
-
-    color: #287be8;
-    text-decoration: none;
-
-    font-size: 17px;
-}
-
-/* الخط */
-.line {
-    border: none;
-    border-top: 1px solid #ddd;
-
-    margin: 35px 0 25px;
-}
-
-/* إنشاء الحساب */
-.create {
-    display: block;
-
-    width: 300px;
-    max-width: 90%;
-
-    margin: auto;
-
-    padding: 15px;
-
-    text-align: center;
-
-    border: 2px solid #42b72a;
-    border-radius: 8px;
-
-    color: #329522;
-
-    text-decoration: none;
-
-    font-size: 19px;
-    font-weight: bold;
-}
-
-/* أسفل الصفحة */
-.footer {
-    text-align: center;
-
-    color: #777;
-
-    font-size: 14px;
-
-    padding: 28px;
-}
-
-/* الهاتف */
-@media (max-width: 600px) {
-
-    .top {
-        min-height: 400px;
-    }
-
-    .login-box {
-        padding: 30px 28px 25px;
-    }
-
-    .logo {
-        width: 78px;
-        height: 78px;
-        font-size: 62px;
-    }
-
-    input {
-        height: 60px;
-        font-size: 17px;
-    }
-
-    .login-button {
-        height: 62px;
-        font-size: 21px;
-    }
-}
-
-</style>
-
-</head>
-
-<body>
-
-
-<!-- الشعار -->
-
-<div class="top">
-
-    <div class="logo">
-        f
-    </div>
-
-</div>
-
-
-<!-- صندوق الدخول -->
-
-<div class="login-box">
-
-    <!-- اللغات -->
-
-    <div class="languages">
-
-        <span>العربية</span>
-        |
-        <span>English</span>
-        |
-        <span>Français</span>
-
-    </div>
-
-
-    <!-- تسجيل الدخول -->
-
-    <form action="/login" method="POST">
-
-        <input
-            type="text"
-            name="email"
-            placeholder="رقم الهاتف أو البريد الإلكتروني"
-            required
-        >
-
-        <input
-            type="password"
-            name="password"
-            placeholder="كلمة السر"
-            required
-        >
-
-        <button
-            type="submit"
-            class="login-button">
-
-            تسجيل الدخول
-
-        </button>
-
-    </form>
-
-
-    <!-- نسيت كلمة السر -->
-
-    <a href="#" class="forgot">
-
-        هل نسيت كلمة السر؟
-
-    </a>
-
-
-    <hr class="line">
-
-
-    <!-- إنشاء حساب -->
-
-    <a href="/register" class="create">
-
-        إنشاء حساب جديد
-
-    </a>
-
-</div>
-
-
-<div class="footer">
-
-    الخصوصية · الشروط
-
-</div>
-
-
-</body>
-</html>
-"""
+REDIRECT_URI = os.environ.get(
+    "FACEBOOK_REDIRECT_URI",
+    "https://my-website-9rh8.onrender.com/auth/facebook/callback"
+)
 
 
 @app.route("/")
 def home():
-    return HTML
 
+    if "facebook_user" in session:
+        user = session["facebook_user"]
 
-@app.route("/login", methods=["POST"])
-def login():
+        name = user.get("name", "المستخدم")
 
-    email = request.form.get("email", "")
+        return f"""
+        <!DOCTYPE html>
+        <html lang="ar" dir="rtl">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport"
+                  content="width=device-width, initial-scale=1.0">
+            <title>حسابي</title>
 
-    # تسجيل تجريبي لموقعك
-    session["user"] = email
+            <style>
+                body {{
+                    font-family: Arial;
+                    background: #f0f2f5;
+                    text-align: center;
+                    padding-top: 100px;
+                }}
+
+                .box {{
+                    background: white;
+                    max-width: 400px;
+                    margin: auto;
+                    padding: 30px;
+                    border-radius: 15px;
+                    box-shadow: 0 3px 15px #0002;
+                }}
+
+                a {{
+                    color: #1877f2;
+                    text-decoration: none;
+                }}
+            </style>
+        </head>
+
+        <body>
+
+            <div class="box">
+
+                <h2>مرحباً {name} 👋</h2>
+
+                <p>تم تسجيل الدخول بنجاح.</p>
+
+                <a href="/logout">
+                    تسجيل الخروج
+                </a>
+
+            </div>
+
+        </body>
+        </html>
+        """
 
     return """
     <!DOCTYPE html>
     <html lang="ar" dir="rtl">
+
     <head>
         <meta charset="UTF-8">
-        <title>تم الدخول</title>
+        <meta name="viewport"
+              content="width=device-width, initial-scale=1.0">
+
+        <title>تسجيل الدخول</title>
+
+        <style>
+
+            body {
+                margin: 0;
+                background: #f0f2f5;
+                font-family: Arial;
+                text-align: center;
+            }
+
+            .box {
+                max-width: 400px;
+                margin: 100px auto;
+                background: white;
+                padding: 35px;
+                border-radius: 15px;
+                box-shadow: 0 3px 15px #0002;
+            }
+
+            h1 {
+                color: #1877f2;
+            }
+
+            .facebook {
+                display: block;
+                background: #1877f2;
+                color: white;
+                padding: 15px;
+                border-radius: 8px;
+                text-decoration: none;
+                font-size: 18px;
+                margin-top: 25px;
+            }
+
+        </style>
     </head>
 
-    <body style="
-        font-family:Arial;
-        text-align:center;
-        padding-top:100px;
-        background:#f0f2f5;
-    ">
+    <body>
 
-        <h2>مرحباً بك 👋</h2>
+        <div class="box">
 
-        <p>تم تسجيل الدخول إلى موقعك.</p>
+            <h1>موقعي</h1>
 
-        <a href="/" style="
-            color:#287be8;
-            text-decoration:none;
-        ">
-            العودة
-        </a>
+            <h2>تسجيل الدخول</h2>
+
+            <p>
+                يمكنك استخدام حساب Facebook
+                لتسجيل الدخول بأمان.
+            </p>
+
+            <a class="facebook" href="/login/facebook">
+                تسجيل الدخول باستخدام Facebook
+            </a>
+
+        </div>
 
     </body>
+
     </html>
     """
 
 
-@app.route("/register")
-def register():
+@app.route("/login/facebook")
+def facebook_login():
 
-    return """
-    <!DOCTYPE html>
-    <html lang="ar" dir="rtl">
+    if not FACEBOOK_APP_ID:
+        return "FACEBOOK_APP_ID غير موجود في إعدادات Render", 500
 
-    <head>
-        <meta charset="UTF-8">
-        <title>إنشاء حساب</title>
-    </head>
+    state = secrets.token_urlsafe(32)
+    session["oauth_state"] = state
 
-    <body style="
-        font-family:Arial;
-        text-align:center;
-        padding-top:100px;
-        background:#f0f2f5;
-    ">
+    facebook_url = (
+        f"https://www.facebook.com/{FACEBOOK_API_VERSION}/dialog/oauth"
+        f"?client_id={FACEBOOK_APP_ID}"
+        f"&redirect_uri={REDIRECT_URI}"
+        f"&state={state}"
+        f"&scope=email,public_profile"
+    )
 
-        <h2>إنشاء حساب جديد</h2>
+    return redirect(facebook_url)
 
-        <p>هذه صفحة إنشاء حساب لموقعك.</p>
 
-        <a href="/" style="
-            color:#287be8;
-            text-decoration:none;
-        ">
-            العودة لتسجيل الدخول
-        </a>
+@app.route("/auth/facebook/callback")
+def facebook_callback():
 
-    </body>
+    if request.args.get("error"):
+        return """
+        <h2 style="text-align:center">
+            تم إلغاء تسجيل الدخول.
+        </h2>
+        <p style="text-align:center">
+            يمكنك العودة والمحاولة مرة أخرى.
+        </p>
+        """
 
-    </html>
-    """
+    state = request.args.get("state")
+
+    if not state or state != session.get("oauth_state"):
+        return "طلب OAuth غير صالح.", 400
+
+    code = request.args.get("code")
+
+    if not code:
+        return "لم يتم الحصول على رمز تسجيل الدخول.", 400
+
+    if not FACEBOOK_APP_ID or not FACEBOOK_APP_SECRET:
+        return "إعدادات Facebook غير مكتملة في Render.", 500
+
+    # الحصول على Access Token
+    token_url = (
+        f"https://graph.facebook.com/"
+        f"{FACEBOOK_API_VERSION}/oauth/access_token"
+    )
+
+    token_response = requests.get(
+        token_url,
+        params={
+            "client_id": FACEBOOK_APP_ID,
+            "client_secret": FACEBOOK_APP_SECRET,
+            "redirect_uri": REDIRECT_URI,
+            "code": code
+        },
+        timeout=15
+    )
+
+    token_data = token_response.json()
+
+    access_token = token_data.get("access_token")
+
+    if not access_token:
+        return "فشل الحصول على Access Token.", 400
+
+    # الحصول على معلومات المستخدم المسموح بها
+    user_response = requests.get(
+        f"https://graph.facebook.com/"
+        f"{FACEBOOK_API_VERSION}/me",
+        params={
+            "fields": "id,name,email",
+            "access_token": access_token
+        },
+        timeout=15
+    )
+
+    user_data = user_response.json()
+
+    if "error" in user_data:
+        return "تعذر الحصول على معلومات الحساب.", 400
+
+    session["facebook_user"] = user_data
+
+    session.pop("oauth_state", None)
+
+    return redirect(url_for("home"))
+
+
+@app.route("/logout")
+def logout():
+
+    session.clear()
+
+    return redirect("/")
 
 
 if __name__ == "__main__":
@@ -396,4 +258,4 @@ if __name__ == "__main__":
     app.run(
         host="0.0.0.0",
         port=port
-    )
+      )
