@@ -1,114 +1,88 @@
-from flask import Flask, request, redirect, session
-import sqlite3
-from werkzeug.security import generate_password_hash, check_password_hash
+from flask import Flask
 
 app = Flask(__name__)
-app.secret_key = "change-this-secret-key"
-
-DB = "users.db"
-
-
-def init_db():
-    conn = sqlite3.connect(DB)
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT UNIQUE NOT NULL,
-            password TEXT NOT NULL
-        )
-    """)
-    conn.commit()
-    conn.close()
-
-
-init_db()
-
 
 @app.route("/")
 def home():
-    username = session.get("username")
-
-    if username:
-        return f"""
-        <!DOCTYPE html>
-        <html lang="ar" dir="rtl">
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>موقعي الإلكتروني</title>
-            <style>
-                body {{
-                    font-family: Arial;
-                    background: #f2f2f2;
-                    text-align: center;
-                    padding: 60px 20px;
-                }}
-                .box {{
-                    max-width: 500px;
-                    margin: auto;
-                    background: white;
-                    padding: 30px;
-                    border-radius: 15px;
-                    box-shadow: 0 4px 15px #bbb;
-                }}
-                h1 {{ color: #1877f2; }}
-                a {{
-                    display: inline-block;
-                    margin: 10px;
-                    padding: 12px 25px;
-                    background: #1877f2;
-                    color: white;
-                    text-decoration: none;
-                    border-radius: 8px;
-                }}
-                .logout {{ background: #e74c3c; }}
-            </style>
-        </head>
-        <body>
-            <div class="box">
-                <h1>مرحباً {username} 👋</h1>
-                <p>أهلاً بك في موقعك الإلكتروني</p>
-                <a href="/about">عن الموقع</a>
-                <a class="logout" href="/logout">تسجيل الخروج</a>
-            </div>
-        </body>
-        </html>
-        """
-
     return """
-    <!DOCTYPE html>
-    <html lang="ar" dir="rtl">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>موقعي الإلكتروني</title>
-        <style>
-            body {
-                font-family: Arial;
-                background: #f2f2f2;
-                text-align: center;
-                padding: 60px 20px;
-            }
-            .box {
-                max-width: 500px;
-                margin: auto;
-                background: white;
-                padding: 30px;
-                border-radius: 15px;
-                box-shadow: 0 4px 15px #bbb;
-            }
-            h1 { color: #1877f2; }
-            a {
-                display: inline-block;
-                margin: 10px;
-                padding: 12px 25px;
-                background: #1877f2;
-                color: white;
-                text-decoration: none;
-                border-radius: 8px;
-            }
-        </style>
-    </head>
-    <body>
-        <div class="box">
-            <h1>مرحباً بك
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>موقعي الإلكتروني</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f2f4f8;
+            color: #222;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 80px auto;
+            padding: 20px;
+        }
+
+        .card {
+            background: white;
+            padding: 40px 25px;
+            border-radius: 25px;
+            text-align: center;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+        }
+
+        h1 {
+            color: #1877f2;
+            font-size: 32px;
+        }
+
+        p {
+            font-size: 20px;
+            margin: 25px 0;
+        }
+
+        button {
+            border: none;
+            background: #1877f2;
+            color: white;
+            padding: 15px 35px;
+            border-radius: 12px;
+            font-size: 18px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #0d65d9;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+    <div class="card">
+
+        <h1>👋 مرحباً بك</h1>
+
+        <p>هذا هو موقعي الإلكتروني</p>
+
+        <button onclick="alert('أهلاً بك في موقعي!')">
+            عن الموقع
+        </button>
+
+    </div>
+</div>
+
+</body>
+</html>
+"""
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=10000)
