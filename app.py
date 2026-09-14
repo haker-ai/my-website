@@ -4,21 +4,14 @@ import os
 from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
-
-# مفتاح الجلسات
 app.secret_key = os.environ.get("SECRET_KEY", "change-this-secret-key")
 
 DATABASE = "users.db"
 
 
-# =========================
-# قاعدة البيانات
-# =========================
 def init_db():
     conn = sqlite3.connect(DATABASE)
-    cursor = conn.cursor()
-
-    cursor.execute("""
+    conn.execute("""
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT NOT NULL,
@@ -26,7 +19,6 @@ def init_db():
             password_hash TEXT NOT NULL
         )
     """)
-
     conn.commit()
     conn.close()
 
@@ -34,9 +26,6 @@ def init_db():
 init_db()
 
 
-# =========================
-# التصميم العام
-# =========================
 STYLE = """
 <style>
 * {
@@ -45,65 +34,59 @@ STYLE = """
 
 body {
     margin: 0;
-    font-family: Arial, sans-serif;
     background: #f0f2f5;
+    font-family: Arial, sans-serif;
     direction: rtl;
 }
 
-.navbar {
+.logo {
+    width: 120px;
+    height: 120px;
+    margin: 30px auto 10px;
+    border-radius: 50%;
     background: #1877f2;
     color: white;
-    padding: 15px 25px;
     display: flex;
-    justify-content: space-between;
     align-items: center;
-}
-
-.logo {
-    font-size: 28px;
+    justify-content: center;
+    font-family: Arial, sans-serif;
+    font-size: 90px;
     font-weight: bold;
 }
 
-.container {
-    max-width: 430px;
-    margin: 50px auto;
-    padding: 20px;
-}
-
 .card {
+    width: 90%;
+    max-width: 490px;
+    margin: 25px auto;
+    padding: 30px;
     background: white;
-    padding: 25px;
-    border-radius: 12px;
-    box-shadow: 0 3px 12px rgba(0,0,0,0.12);
+    border-radius: 15px;
+    box-shadow: 0 3px 15px #ccc;
 }
 
-h1, h2 {
+h2 {
     text-align: center;
+    font-size: 32px;
 }
 
 input {
     width: 100%;
-    padding: 14px;
+    padding: 17px;
     margin: 8px 0;
     border: 1px solid #ddd;
-    border-radius: 8px;
-    font-size: 16px;
+    border-radius: 10px;
+    font-size: 17px;
 }
 
 button {
     width: 100%;
-    padding: 14px;
+    padding: 16px;
     margin-top: 10px;
-    border: none;
-    border-radius: 8px;
+    border: 0;
+    border-radius: 9px;
     background: #1877f2;
     color: white;
-    font-size: 17px;
-    cursor: pointer;
-}
-
-button:hover {
-    background: #166fe5;
+    font-size: 19px;
 }
 
 a {
@@ -113,73 +96,46 @@ a {
 
 .message {
     text-align: center;
-    color: red;
+    color: #d00;
     margin: 10px;
-}
-
-.profile {
-    text-align: center;
-}
-
-.avatar {
-    width: 90px;
-    height: 90px;
-    background: #1877f2;
-    color: white;
-    border-radius: 50%;
-    margin: auto;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 40px;
-    font-weight: bold;
 }
 </style>
 """
 
 
-# =========================
-# الصفحة الرئيسية
-# =========================
 @app.route("/")
 def home():
-
-    if "user_id" in session:
-        return redirect(url_for("profile"))
-
     return render_template_string(STYLE + """
-    <div class="navbar">
-        <div class="logo">SBook</div>
-        <div>
-            <a href="/login" style="color:white;">تسجيل الدخول</a>
-        </div>
-    </div>
+        <div class="logo">f</div>
 
-    <div class="container">
         <div class="card">
-            <h1>مرحباً بك في SBook 👋</h1>
+            <h2>تسجيل الدخول</h2>
 
-            <p style="text-align:center;">
-                شبكة اجتماعية خاصة بك
-            </p>
+            <form method="POST" action="/login">
+                <input type="email"
+                       name="email"
+                       placeholder="البريد الإلكتروني"
+                       required>
 
-            <a href="/register">
-                <button>إنشاء حساب جديد</button>
-            </a>
+                <input type="password"
+                       name="password"
+                       placeholder="كلمة السر"
+                       required>
 
-            <a href="/login">
-                <button style="background:#42b72a;">
+                <button type="submit">
                     تسجيل الدخول
                 </button>
-            </a>
+            </form>
+
+            <hr>
+
+            <p style="text-align:center;">
+                <a href="/register">إنشاء حساب جديد</a>
+            </p>
         </div>
-    </div>
     """)
 
 
-# =========================
-# التسجيل
-# =========================
 @app.route("/register", methods=["GET", "POST"])
 def register():
 
@@ -191,20 +147,16 @@ def register():
         email = request.form.get("email", "").strip()
         password = request.form.get("password", "")
 
-        if not username or not email or not password:
-            message = "يرجى ملء جميع الحقول."
-
-        elif len(password) < 6:
-            message = "كلمة المرور يجب أن تكون 6 أحرف على الأقل."
+        if len(password) < 6:
+            message = "كلمة السر يجب أن تكون 6 أحرف على الأقل."
 
         else:
             password_hash = generate_password_hash(password)
 
             try:
                 conn = sqlite3.connect(DATABASE)
-                cursor = conn.cursor()
 
-                cursor.execute("""
+                conn.execute("""
                     INSERT INTO users
                     (username, email, password_hash)
                     VALUES (?, ?, ?)
@@ -213,20 +165,16 @@ def register():
                 conn.commit()
                 conn.close()
 
-                return redirect(url_for("login"))
+                return redirect(url_for("home"))
 
             except sqlite3.IntegrityError:
-                message = "هذا البريد الإلكتروني مسجل بالفعل."
+                message = "البريد الإلكتروني مسجل من قبل."
 
     return render_template_string(STYLE + """
-    <div class="navbar">
-        <div class="logo">SBook</div>
-    </div>
+        <div class="logo">f</div>
 
-    <div class="container">
         <div class="card">
-
-            <h2>إنشاء حساب جديد</h2>
+            <h2>إنشاء حساب</h2>
 
             {% if message %}
                 <div class="message">{{ message }}</div>
@@ -234,26 +182,20 @@ def register():
 
             <form method="POST">
 
-                <input
-                    type="text"
-                    name="username"
-                    placeholder="اسم المستخدم"
-                    required
-                >
+                <input type="text"
+                       name="username"
+                       placeholder="اسم المستخدم"
+                       required>
 
-                <input
-                    type="email"
-                    name="email"
-                    placeholder="البريد الإلكتروني"
-                    required
-                >
+                <input type="email"
+                       name="email"
+                       placeholder="البريد الإلكتروني"
+                       required>
 
-                <input
-                    type="password"
-                    name="password"
-                    placeholder="كلمة المرور"
-                    required
-                >
+                <input type="password"
+                       name="password"
+                       placeholder="كلمة السر"
+                       required>
 
                 <button type="submit">
                     إنشاء الحساب
@@ -262,113 +204,60 @@ def register():
             </form>
 
             <p style="text-align:center;">
-                لديك حساب؟
-                <a href="/login">تسجيل الدخول</a>
+                <a href="/">العودة لتسجيل الدخول</a>
             </p>
-
         </div>
-    </div>
     """, message=message)
 
 
-# =========================
-# تسجيل الدخول
-# =========================
-@app.route("/login", methods=["GET", "POST"])
+@app.route("/login", methods=["POST"])
 def login():
 
-    message = ""
+    email = request.form.get("email", "").strip()
+    password = request.form.get("password", "")
 
-    if request.method == "POST":
+    conn = sqlite3.connect(DATABASE)
+    user = conn.execute(
+        "SELECT id, username, password_hash FROM users WHERE email = ?",
+        (email,)
+    ).fetchone()
+    conn.close()
 
-        email = request.form.get("email", "").strip()
-        password = request.form.get("password", "")
+    if user and check_password_hash(user[2], password):
+        session["user_id"] = user[0]
+        session["username"] = user[1]
 
-        conn = sqlite3.connect(DATABASE)
-        cursor = conn.cursor()
-
-        cursor.execute(
-            "SELECT id, username, password_hash FROM users WHERE email = ?",
-            (email,)
-        )
-
-        user = cursor.fetchone()
-
-        conn.close()
-
-        if user and check_password_hash(user[2], password):
-
-            session["user_id"] = user[0]
-            session["username"] = user[1]
-
-            return redirect(url_for("profile"))
-
-        else:
-            message = "البريد الإلكتروني أو كلمة المرور غير صحيحة."
+        return f"""
+        <h1 style="text-align:center;">
+            مرحباً {user[1]} 👋
+        </h1>
+        <p style="text-align:center;">
+            تم تسجيل الدخول بنجاح.
+        </p>
+        """
 
     return render_template_string(STYLE + """
-    <div class="navbar">
-        <div class="logo">SBook</div>
-    </div>
+        <div class="logo">f</div>
 
-    <div class="container">
         <div class="card">
-
             <h2>تسجيل الدخول</h2>
 
-            {% if message %}
-                <div class="message">{{ message }}</div>
-            {% endif %}
+            <div class="message">
+                البريد الإلكتروني أو كلمة السر غير صحيحة.
+            </div>
 
-            <form method="POST">
-
-                <input
-                    type="email"
-                    name="email"
-                    placeholder="البريد الإلكتروني"
-                    required
-                >
-
-                <input
-                    type="password"
-                    name="password"
-                    placeholder="كلمة المرور"
-                    required
-                >
-
-                <button type="submit">
-                    تسجيل الدخول
-                </button>
-
-            </form>
-
-            <p style="text-align:center;">
-                ليس لديك حساب؟
-                <a href="/register">إنشاء حساب</a>
-            </p>
-
+            <a href="/">
+                <button>العودة</button>
+            </a>
         </div>
-    </div>
-    """, message=message)
+    """)
 
 
-# =========================
-# الملف الشخصي
-# =========================
-@app.route("/profile")
-def profile():
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 10000))
 
-    if "user_id" not in session:
-        return redirect(url_for("login"))
-
-    username = session.get("username", "مستخدم")
-
-    return render_template_string(STYLE + """
-    <div class="navbar">
-        <div class="logo">SBook</div>
-        <a href="/logout" style="color:white;">
-            تسجيل الخروج
-        </a>
-    </div>
-
-    <div class="container">
+    app.run(
+        host="0.0.0.0",
+        port=port,
+        debug=False
+)
