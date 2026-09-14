@@ -1,8 +1,8 @@
-from flask import Flask, request, render_template_string
+from flask import Flask, render_template_string, request
 
 app = Flask(__name__)
 
-HTML = """
+PAGE = """
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
@@ -18,148 +18,147 @@ HTML = """
 
 body {
     margin: 0;
-    background: #f0f2f5;
+    min-height: 100vh;
+    background: #f8fafd;
     font-family: Arial, sans-serif;
-    color: #333;
+    color: #202124;
 }
 
-.top {
-    text-align: center;
-    padding-top: 45px;
-}
-
-.languages {
-    color: #4267a9;
-    font-size: 17px;
-    margin-bottom: 55px;
-}
-
-.logo {
-    width: 82px;
-    height: 82px;
-    border-radius: 50%;
-    background: #1877f2;
-    color: white;
-    font-size: 55px;
-    font-weight: bold;
+.container {
+    min-height: 100vh;
     display: flex;
     align-items: center;
     justify-content: center;
-    margin: auto;
 }
 
 .card {
-    width: 92%;
-    max-width: 620px;
-    margin: 35px auto;
+    width: 450px;
+    max-width: 92%;
+    background: white;
+    border: 1px solid #dadce0;
+    border-radius: 12px;
+    padding: 40px;
+}
+
+.logo {
+    text-align: center;
+    font-size: 38px;
+    font-weight: bold;
+    color: #1877f2;
+    margin-bottom: 20px;
+}
+
+h1 {
+    text-align: center;
+    font-size: 28px;
+    font-weight: 400;
+    margin: 10px;
+}
+
+.subtitle {
+    text-align: center;
+    font-size: 16px;
+    margin-bottom: 35px;
 }
 
 input {
     width: 100%;
-    height: 70px;
-    border: 1px solid #ddd;
-    border-radius: 10px;
-    padding: 0 20px;
-    font-size: 18px;
-    margin-bottom: 12px;
-    background: white;
+    height: 55px;
+    border: 1px solid #777;
+    border-radius: 5px;
+    padding: 0 15px;
+    font-size: 16px;
+    margin-bottom: 15px;
 }
 
-.login {
+.next {
     width: 100%;
-    height: 68px;
-    border: none;
-    border-radius: 9px;
+    height: 48px;
     background: #1877f2;
     color: white;
-    font-size: 23px;
-    font-weight: bold;
+    border: none;
+    border-radius: 5px;
+    font-size: 17px;
+    cursor: pointer;
 }
 
-.forgot {
-    display: block;
+.links {
+    margin-top: 25px;
     text-align: center;
-    margin: 25px;
+}
+
+.links a {
     color: #1877f2;
-    font-size: 18px;
-}
-
-.line {
-    border-top: 1px solid #ddd;
-    margin: 35px 0;
-}
-
-.create {
-    display: block;
-    width: 100%;
-    height: 65px;
-    border: 2px solid #42b72a;
-    border-radius: 9px;
-    background: transparent;
-    color: #42b72a;
-    font-size: 21px;
-    font-weight: bold;
+    text-decoration: none;
+    margin: 0 8px;
 }
 
 .footer {
     text-align: center;
-    margin-top: 50px;
+    margin-top: 30px;
+    font-size: 13px;
     color: #777;
-    font-size: 14px;
+}
+
+@media(max-width:500px) {
+    .card {
+        border: none;
+        padding: 25px;
+    }
 }
 </style>
 </head>
 
 <body>
 
-<div class="top">
-
-    <div class="languages">
-        العربية | English | Français
-    </div>
-
-    <div class="logo">S</div>
-
-</div>
+<div class="container">
 
 <div class="card">
+
+    <div class="logo">SBook</div>
+
+    <h1>تسجيل الدخول</h1>
+
+    <div class="subtitle">
+        استخدام حسابك على SBook
+    </div>
 
     <form method="POST" action="/login">
 
         <input
             type="email"
             name="email"
-            placeholder="البريد الإلكتروني أو رقم الهاتف"
+            placeholder="البريد الإلكتروني"
             required
         >
 
         <input
             type="password"
             name="password"
-            placeholder="كلمة السر"
+            placeholder="كلمة المرور"
             required
         >
 
-        <button class="login" type="submit">
-            تسجيل الدخول
+        <button class="next" type="submit">
+            التالي
         </button>
 
     </form>
 
-    <a class="forgot" href="#">
-        هل نسيت كلمة السر؟
-    </a>
+    <div class="links">
+        <a href="#">هل نسيت البريد الإلكتروني؟</a>
+    </div>
 
-    <div class="line"></div>
+    <div class="links">
+        <a href="/register">إنشاء حساب</a>
+    </div>
 
-    <button class="create" onclick="location.href='/register'">
-        إنشاء حساب جديد
-    </button>
+    <div class="footer">
+        العربية | English | Français
+    </div>
 
 </div>
 
-<div class="footer">
-    SBook © 2026
 </div>
 
 </body>
@@ -169,31 +168,27 @@ input {
 
 @app.route("/")
 def home():
-    return render_template_string(HTML)
+    return render_template_string(PAGE)
 
 
 @app.route("/login", methods=["POST"])
 def login():
-    # هنا يمكنك لاحقاً ربط تسجيل الدخول بقاعدة بياناتك
-    return """
-    <div style="text-align:center;font-family:Arial;margin-top:100px">
-        <h2>تم إرسال طلب تسجيل الدخول</h2>
-        <a href="/">العودة</a>
-    </div>
-    """
+    # معالجة تسجيل الدخول لموقعك أنت
+    return "تم إرسال طلب تسجيل الدخول."
 
 
 @app.route("/register")
 def register():
-    return """
-    <div style="text-align:center;font-family:Arial;margin-top:100px">
-        <h2>إنشاء حساب جديد</h2>
-        <a href="/">العودة لتسجيل الدخول</a>
-    </div>
-    """
+    return "صفحة إنشاء الحساب"
 
 
 if __name__ == "__main__":
     import os
+
     port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port)
+
+    app.run(
+        host="0.0.0.0",
+        port=port,
+        debug=False
+)
