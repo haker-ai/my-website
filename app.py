@@ -1,261 +1,291 @@
-from flask import Flask, redirect, request, session, url_for
-import os
-import secrets
-import requests
+from flask import Flask
 
 app = Flask(__name__)
 
-app.secret_key = os.environ.get("SECRET_KEY", secrets.token_hex(32))
-
-FACEBOOK_APP_ID = os.environ.get("FACEBOOK_APP_ID")
-FACEBOOK_APP_SECRET = os.environ.get("FACEBOOK_APP_SECRET")
-
-# غيّر هذا إذا استخدمت إصدار Graph API آخر في تطبيق Meta
-FACEBOOK_API_VERSION = os.environ.get("FACEBOOK_API_VERSION", "v23.0")
-
-REDIRECT_URI = os.environ.get(
-    "FACEBOOK_REDIRECT_URI",
-    "https://my-website-9rh8.onrender.com/auth/facebook/callback"
-)
-
-
 @app.route("/")
 def home():
-
-    if "facebook_user" in session:
-        user = session["facebook_user"]
-
-        name = user.get("name", "المستخدم")
-
-        return f"""
-        <!DOCTYPE html>
-        <html lang="ar" dir="rtl">
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport"
-                  content="width=device-width, initial-scale=1.0">
-            <title>حسابي</title>
-
-            <style>
-                body {{
-                    font-family: Arial;
-                    background: #f0f2f5;
-                    text-align: center;
-                    padding-top: 100px;
-                }}
-
-                .box {{
-                    background: white;
-                    max-width: 400px;
-                    margin: auto;
-                    padding: 30px;
-                    border-radius: 15px;
-                    box-shadow: 0 3px 15px #0002;
-                }}
-
-                a {{
-                    color: #1877f2;
-                    text-decoration: none;
-                }}
-            </style>
-        </head>
-
-        <body>
-
-            <div class="box">
-
-                <h2>مرحباً {name} 👋</h2>
-
-                <p>تم تسجيل الدخول بنجاح.</p>
-
-                <a href="/logout">
-                    تسجيل الخروج
-                </a>
-
-            </div>
-
-        </body>
-        </html>
-        """
-
     return """
-    <!DOCTYPE html>
-    <html lang="ar" dir="rtl">
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport"
-              content="width=device-width, initial-scale=1.0">
+    <title>eFootball - المكافآت</title>
 
-        <title>تسجيل الدخول</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
 
-        <style>
+        body {
+            margin: 0;
+            font-family: Arial, Tahoma, sans-serif;
+            background: #07101f;
+            color: white;
+        }
 
-            body {
-                margin: 0;
-                background: #f0f2f5;
-                font-family: Arial;
-                text-align: center;
-            }
+        .container {
+            width: 92%;
+            max-width: 700px;
+            margin: auto;
+            padding: 15px 0 40px;
+        }
 
-            .box {
-                max-width: 400px;
-                margin: 100px auto;
-                background: white;
-                padding: 35px;
-                border-radius: 15px;
-                box-shadow: 0 3px 15px #0002;
-            }
+        /* الصور */
+        .banner {
+            width: 100%;
+            border-radius: 16px;
+            overflow: hidden;
+            margin-bottom: 20px;
+            border: 1px solid #26364d;
+            box-shadow: 0 5px 20px rgba(0,0,0,.5);
+            background: #101b2d;
+        }
+
+        .banner img {
+            width: 100%;
+            display: block;
+        }
+
+        /* البطاقة الرئيسية */
+        .card {
+            background: #1b283b;
+            border-radius: 22px;
+            padding: 28px 20px;
+            box-shadow: 0 8px 30px rgba(0,0,0,.4);
+        }
+
+        h1 {
+            text-align: center;
+            color: #39bfff;
+            font-size: 29px;
+            margin: 0 0 22px;
+            line-height: 1.5;
+        }
+
+        .description {
+            color: #d5dce7;
+            font-size: 18px;
+            line-height: 2;
+            text-align: center;
+            margin-bottom: 22px;
+        }
+
+        /* المكافآت */
+        .rewards {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            background: #0d1729;
+            border: 1px solid #293852;
+            border-radius: 15px;
+            padding: 20px 8px;
+            margin-bottom: 25px;
+        }
+
+        .reward {
+            text-align: center;
+            width: 33%;
+        }
+
+        .reward .number {
+            color: #ffd21c;
+            font-size: 21px;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        .reward .label {
+            color: #aab4c5;
+            font-size: 14px;
+        }
+
+        /* زر الاستلام */
+        .claim {
+            display: block;
+            width: 100%;
+            border: none;
+            border-radius: 10px;
+            padding: 17px;
+            background: linear-gradient(90deg,#ed174b,#f5264f);
+            color: white;
+            font-size: 21px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 5px 15px rgba(237,23,75,.3);
+        }
+
+        .claim:active {
+            transform: scale(.98);
+        }
+
+        .note {
+            text-align: center;
+            color: #8794a8;
+            font-size: 13px;
+            margin-top: 18px;
+            line-height: 1.8;
+        }
+
+        /* نافذة المكافأة */
+        .popup {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,.75);
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .popup-box {
+            width: 100%;
+            max-width: 400px;
+            background: #1b283b;
+            border-radius: 20px;
+            padding: 30px 20px;
+            text-align: center;
+            border: 1px solid #344761;
+        }
+
+        .popup-box h2 {
+            color: #39bfff;
+            margin-top: 0;
+        }
+
+        .close {
+            margin-top: 20px;
+            background: #33435a;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+
+        /* الهاتف */
+        @media(max-width:450px) {
 
             h1 {
-                color: #1877f2;
+                font-size: 25px;
             }
 
-            .facebook {
-                display: block;
-                background: #1877f2;
-                color: white;
-                padding: 15px;
-                border-radius: 8px;
-                text-decoration: none;
-                font-size: 18px;
-                margin-top: 25px;
+            .description {
+                font-size: 16px;
             }
 
-        </style>
-    </head>
+            .reward .number {
+                font-size: 17px;
+            }
 
-    <body>
+            .reward .label {
+                font-size: 12px;
+            }
+        }
+    </style>
+</head>
 
-        <div class="box">
+<body>
 
-            <h1>موقعي</h1>
+<div class="container">
 
-            <h2>تسجيل الدخول</h2>
+    <!-- الصورة الأولى -->
+    <div class="banner">
+        <img src="https://placehold.co/700x380/080b55/ffffff?text=eFootball+2027+Pack"
+             alt="eFootball Pack">
+    </div>
 
-            <p>
-                يمكنك استخدام حساب Facebook
-                لتسجيل الدخول بأمان.
-            </p>
+    <!-- الصورة الثانية -->
+    <div class="banner">
+        <img src="https://placehold.co/700x380/080b55/ffffff?text=Lionel+Messi+Pack"
+             alt="Player Pack">
+    </div>
 
-            <a class="facebook" href="/login/facebook">
-                تسجيل الدخول باستخدام Facebook
-            </a>
+    <!-- المحتوى -->
+    <div class="card">
+
+        <h1>
+            فعالية شحن ومكافآت eFootball<br>
+            الحصرية
+        </h1>
+
+        <div class="description">
+            احتفالاً بالموسم الجديد، نقدم مكافآت
+            تجريبية للاعبين تشمل عملات وعناصر
+            ومحتوى خاص باللعبة.
+        </div>
+
+        <div class="rewards">
+
+            <div class="reward">
+                <div class="number">⭐ L. Yamal</div>
+                <div class="label">حزمة النجوم</div>
+            </div>
+
+            <div class="reward">
+                <div class="number">⭐ L. Messi</div>
+                <div class="label">حزمة الأساطير</div>
+            </div>
+
+            <div class="reward">
+                <div class="number">🪙 1000</div>
+                <div class="label">عملة كوينز</div>
+            </div>
 
         </div>
 
-    </body>
+        <button class="claim" onclick="claimReward()">
+            🎁 استلام المكافأة الآن
+        </button>
 
-    </html>
-    """
+        <div class="note">
+            هذا الموقع نموذج تجريبي غير رسمي.
+            لا تدخل كلمة مرور حسابك أو بياناتك الشخصية.
+        </div>
 
+    </div>
 
-@app.route("/login/facebook")
-def facebook_login():
+</div>
 
-    if not FACEBOOK_APP_ID:
-        return "FACEBOOK_APP_ID غير موجود في إعدادات Render", 500
+<!-- النافذة -->
+<div class="popup" id="popup">
 
-    state = secrets.token_urlsafe(32)
-    session["oauth_state"] = state
+    <div class="popup-box">
 
-    facebook_url = (
-        f"https://www.facebook.com/{FACEBOOK_API_VERSION}/dialog/oauth"
-        f"?client_id={FACEBOOK_APP_ID}"
-        f"&redirect_uri={REDIRECT_URI}"
-        f"&state={state}"
-        f"&scope=email,public_profile"
-    )
+        <h2>🎁 المكافأة</h2>
 
-    return redirect(facebook_url)
-
-
-@app.route("/auth/facebook/callback")
-def facebook_callback():
-
-    if request.args.get("error"):
-        return """
-        <h2 style="text-align:center">
-            تم إلغاء تسجيل الدخول.
-        </h2>
-        <p style="text-align:center">
-            يمكنك العودة والمحاولة مرة أخرى.
+        <p>
+            تم الضغط على زر استلام المكافأة.
         </p>
-        """
 
-    state = request.args.get("state")
+        <p>
+            هذا نموذج تجريبي فقط.
+        </p>
 
-    if not state or state != session.get("oauth_state"):
-        return "طلب OAuth غير صالح.", 400
+        <button class="close" onclick="closePopup()">
+            إغلاق
+        </button>
 
-    code = request.args.get("code")
+    </div>
 
-    if not code:
-        return "لم يتم الحصول على رمز تسجيل الدخول.", 400
+</div>
 
-    if not FACEBOOK_APP_ID or not FACEBOOK_APP_SECRET:
-        return "إعدادات Facebook غير مكتملة في Render.", 500
+<script>
 
-    # الحصول على Access Token
-    token_url = (
-        f"https://graph.facebook.com/"
-        f"{FACEBOOK_API_VERSION}/oauth/access_token"
-    )
+function claimReward() {
+    document.getElementById("popup").style.display = "flex";
+}
 
-    token_response = requests.get(
-        token_url,
-        params={
-            "client_id": FACEBOOK_APP_ID,
-            "client_secret": FACEBOOK_APP_SECRET,
-            "redirect_uri": REDIRECT_URI,
-            "code": code
-        },
-        timeout=15
-    )
+function closePopup() {
+    document.getElementById("popup").style.display = "none";
+}
 
-    token_data = token_response.json()
+</script>
 
-    access_token = token_data.get("access_token")
-
-    if not access_token:
-        return "فشل الحصول على Access Token.", 400
-
-    # الحصول على معلومات المستخدم المسموح بها
-    user_response = requests.get(
-        f"https://graph.facebook.com/"
-        f"{FACEBOOK_API_VERSION}/me",
-        params={
-            "fields": "id,name,email",
-            "access_token": access_token
-        },
-        timeout=15
-    )
-
-    user_data = user_response.json()
-
-    if "error" in user_data:
-        return "تعذر الحصول على معلومات الحساب.", 400
-
-    session["facebook_user"] = user_data
-
-    session.pop("oauth_state", None)
-
-    return redirect(url_for("home"))
-
-
-@app.route("/logout")
-def logout():
-
-    session.clear()
-
-    return redirect("/")
-
+</body>
+</html>
+"""
 
 if __name__ == "__main__":
-
-    port = int(os.environ.get("PORT", 10000))
-
-    app.run(
-        host="0.0.0.0",
-        port=port
-      )
+    app.run(host="0.0.0.0", port=5000)
